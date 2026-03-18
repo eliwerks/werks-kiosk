@@ -87,11 +87,7 @@
     display: none;
   }
   .summary strong { color: #f0a500; }
-  .loading {
-    text-align: center;
-    color: #aaa;
-    font-size: 1em;
-  }
+  .loading { text-align: center; color: #aaa; font-size: 1em; }
   .error-msg {
     color: #f44336;
     text-align: center;
@@ -124,7 +120,6 @@
   const jobRef = params.get('job') || 'unknown-job';
   document.getElementById('jobRef').textContent = 'Job: ' + jobRef;
 
-  // Create Dropbox file request on page load
   async function setupUpload() {
     try {
       const res = await fetch('/.netlify/functions/create-request', {
@@ -132,12 +127,9 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ jobRef })
       });
-
-      if (!res.ok) throw new Error('Failed to create request');
-
+      if (!res.ok) throw new Error('Failed');
       document.getElementById('loadingMsg').style.display = 'none';
       document.getElementById('uploadBox').style.display = 'block';
-
     } catch (e) {
       document.getElementById('loadingMsg').style.display = 'none';
       document.getElementById('errorMsg').style.display = 'block';
@@ -159,25 +151,35 @@
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const ext = file.name.split('.').pop();
-      const fileName = `${jobRef}_${String(i + 1).padStart(3, '0')}.${ext}`;
+      const fileName = `${jobRef}/${jobRef}_${String(i + 1).padStart(3, '0')}.${ext}`;
 
       const item = document.createElement('div');
       item.className = 'file-item';
       item.innerHTML = `
-        <span class="file-name">${fileName}</span>
+        <span class="file-name">${fileName.split('/')[1]}</span>
         <span class="file-status status-uploading" id="status-${i}">Uploading...</span>
       `;
       area.appendChild(item);
 
       try {
-        const base64 = await toBase64(file);
-        const res = await fetch('/.netlify/functions/upload', {
+        // Get upload URL from our function
+        const urlRes = await fetch('/.netlify/functions/get-upload-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fileName: `${jobRef}/${fileName}`, fileData: base64 })
+          body: JSON.stringify({ fileName })
         });
 
-        if (res.ok) {
+        if (!urlRes.ok) throw new Error('Failed to get upload URL');
+        const { uploadUrl } = await urlRes.json();
+
+        // Upload directly to Dropbox
+        const uploadRes = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: file
+        });
+
+        if (uploadRes.ok) {
           document.getElementById(`status-${i}`).textContent = '✓ Done';
           document.getElementById(`status-${i}`).className = 'file-status status-done';
           done++;
@@ -196,15 +198,6 @@
     summary.innerHTML = errors === 0
       ? `<strong>${done} photo${done !== 1 ? 's' : ''} uploaded successfully.</strong> You can close this page.`
       : `<strong>${done} uploaded, ${errors} failed.</strong> Please try again for failed items.`;
-  }
-
-  function toBase64(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   }
 </script>
 </body>
