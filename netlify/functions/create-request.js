@@ -35,6 +35,7 @@ exports.handler = async function(event) {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Dropbox-API-Path-Root': JSON.stringify({".tag": "namespace_id", "namespace_id": "3228987811"}),
+        'Dropbox-API-Select-User': 'dbmid:AABAUu5HZcX1wqkIDscPOq2Rk6YfBJsNWLU',
         'Content-Length': Buffer.byteLength(requestBody)
       }
     };
