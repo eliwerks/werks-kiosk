@@ -169,7 +169,10 @@
           body: JSON.stringify({ fileName })
         });
 
-        if (!urlRes.ok) throw new Error('Failed to get upload URL');
+        if (!urlRes.ok) {
+  const errText = await urlRes.text();
+  throw new Error('Failed to get upload URL: ' + errText);
+         }
         const { uploadUrl } = await urlRes.json();
 
         // Upload directly to Dropbox
@@ -187,7 +190,7 @@
           throw new Error('Upload failed');
         }
       } catch (e) {
-        document.getElementById(`status-${i}`).textContent = '✗ Error';
+        document.getElementById(`status-${i}`).textContent = '✗ ' + e.message;
         document.getElementById(`status-${i}`).className = 'file-status status-error';
         errors++;
       }
