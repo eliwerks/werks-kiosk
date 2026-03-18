@@ -11,7 +11,7 @@ exports.handler = async function(event) {
 
   const requestBody = JSON.stringify({
     title: jobRef,
-    destination: `/Werks Photo Intake/${jobRef}`,
+    destination: `/OTTO WERKS/z(TEST) Project Management - Eli Only/WERKS Photo Intake/${jobRef}`,
   });
 
   return new Promise((resolve) => {
