@@ -12,7 +12,7 @@ exports.handler = async function(event) {
   const fileBuffer = Buffer.from(fileData, 'base64');
 
   const dropboxArg = JSON.stringify({
-    path: /OTTO WERKS/z(TEST) Project Management - Eli Only/WERKS Photo Intake/${fileName}
+    path: `/OTTO WERKS/z(TEST) Project Management - Eli Only/WERKS Photo Intake/${fileName}`,
     mode: 'add',
     autorename: true,
     mute: false
