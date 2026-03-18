@@ -23,7 +23,7 @@ exports.handler = async function(event) {
 
   const requestBody = JSON.stringify({
     title: jobRef,
-    destination: `/OTTO WERKS/z(TEST) Project Management - Eli Only/WERKS Photo Intake/${jobRef}`,
+    destination: `/WERKS Photo Intake/${jobRef}`,
   });
 
   return new Promise((resolve) => {
@@ -34,7 +34,6 @@ exports.handler = async function(event) {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'Dropbox-API-Select-User': 'dbmid:AABAUu5HZcX1wqkIDscPOq2Rk6YfBJsNWLU',
         'Content-Length': Buffer.byteLength(requestBody)
       }
     };
