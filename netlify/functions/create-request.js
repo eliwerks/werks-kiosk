@@ -1,6 +1,18 @@
 const https = require('https');
 
 exports.handler = async function(event) {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: ''
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method not allowed' };
   }
@@ -11,7 +23,7 @@ exports.handler = async function(event) {
 
   const requestBody = JSON.stringify({
     title: jobRef,
-    destination: `/OTTO WERKS/z(TEST) Project Management - Eli Only/WERKS Photo Intake/${jobRef}`,
+    destination: `/z(TEST) Project Management - Eli Only/WERKS Photo Intake/${jobRef}`,
   });
 
   return new Promise((resolve) => {
@@ -22,6 +34,7 @@ exports.handler = async function(event) {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Dropbox-API-Path-Root': JSON.stringify({".tag": "namespace_id", "namespace_id": "3228987811"}),
         'Content-Length': Buffer.byteLength(requestBody)
       }
     };
@@ -34,11 +47,13 @@ exports.handler = async function(event) {
           const parsed = JSON.parse(data);
           resolve({
             statusCode: 200,
+            headers: { 'Access-Control-Allow-Origin': '*' },
             body: JSON.stringify({ url: parsed.url })
           });
         } else {
           resolve({
             statusCode: 500,
+            headers: { 'Access-Control-Allow-Origin': '*' },
             body: data
           });
         }
