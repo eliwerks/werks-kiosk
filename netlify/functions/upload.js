@@ -1,6 +1,18 @@
 const https = require('https');
 
 exports.handler = async function(event) {
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: ''
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method not allowed' };
   }
@@ -37,13 +49,20 @@ exports.handler = async function(event) {
       res.on('end', () => {
         resolve({
           statusCode: res.statusCode === 200 ? 200 : 500,
+          headers: {
+            'Access-Control-Allow-Origin': '*'
+          },
           body: data
         });
       });
     });
 
     req.on('error', (e) => {
-      resolve({ statusCode: 500, body: e.message });
+      resolve({ 
+        statusCode: 500, 
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: e.message 
+      });
     });
 
     req.write(fileBuffer);
