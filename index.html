@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WERKS Photo Upload</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #1a1a1a;
+    color: #ffffff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 24px;
+  }
+  h1 { color: #f0a500; font-size: 2em; letter-spacing: 2px; }
+  .job-ref {
+    font-size: 0.85em;
+    color: #aaa;
+    font-family: monospace;
+    background: #2a2a2a;
+    padding: 10px 16px;
+    border-radius: 8px;
+    word-break: break-all;
+    text-align: center;
+    max-width: 500px;
+  }
+  .upload-box {
+    background: #2a2a2a;
+    border: 3px dashed #444;
+    border-radius: 20px;
+    padding: 48px 32px;
+    text-align: center;
+    width: 100%;
+    max-width: 500px;
+    cursor: pointer;
+    transition: border 0.2s;
+  }
+  .upload-box:hover { border-color: #f0a500; }
+  .upload-icon { font-size: 4em; margin-bottom: 16px; }
+  .upload-box p { color: #aaa; font-size: 1.1em; margin-bottom: 24px; }
+  input[type=file] { display: none; }
+  .btn {
+    padding: 18px 40px;
+    font-size: 1.2em;
+    font-weight: bold;
+    background: #f0a500;
+    color: #1a1a1a;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s;
+  }
+  .btn:hover { background: #ffc107; }
+  .btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+  .progress-area {
+    width: 100%;
+    max-width: 500px;
+    display: none;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .file-item {
+    background: #2a2a2a;
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.9em;
+  }
+  .file-name { color: #ccc; flex: 1; text-align: left; word-break: break-all; }
+  .file-status { margin-left: 12px; font-weight: bold; }
+  .status-uploading { color: #f0a500; }
+  .status-done { color: #4caf50; }
+  .status-error { color: #f44336; }
+  .summary {
+    text-align: center;
+    color: #aaa;
+    font-size: 0.95em;
+    display: none;
+  }
+  .summary strong { color: #f0a500; }
+  .loading {
+    text-align: center;
+    color: #aaa;
+    font-size: 1em;
+  }
+  .error-msg {
+    color: #f44336;
+    text-align: center;
+    font-size: 0.95em;
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<h1>WERKS</h1>
+<div class="job-ref" id="jobRef">Loading job...</div>
+<div class="loading" id="loadingMsg">Setting up upload...</div>
+<div class="error-msg" id="errorMsg">Failed to set up upload. Please close and scan again.</div>
+
+<div class="upload-box" id="uploadBox" style="display:none" onclick="document.getElementById('fileInput').click()">
+  <div class="upload-icon">📷</div>
+  <p>Tap to select photos from your camera roll</p>
+  <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)" />
+  <button class="btn" onclick="event.stopPropagation(); document.getElementById('fileInput').click()">
+    Select Photos
+  </button>
+</div>
+
+<div class="progress-area" id="progressArea"></div>
+<div class="summary" id="summary"></div>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const jobRef = params.get('job') || 'unknown-job';
+  document.getElementById('jobRef').textContent = 'Job: ' + jobRef;
+
+  // Create Dropbox file request on page load
+  async function setupUpload() {
+    try {
+      const res = await fetch('/.netlify/functions/create-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobRef })
+      });
+
+      if (!res.ok) throw new Error('Failed to create request');
+
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('uploadBox').style.display = 'block';
+
+    } catch (e) {
+      document.getElementById('loadingMsg').style.display = 'none';
+      document.getElementById('errorMsg').style.display = 'block';
+    }
+  }
+
+  setupUpload();
+
+  async function handleFiles(files) {
+    if (!files.length) return;
+
+    const area = document.getElementById('progressArea');
+    area.style.display = 'flex';
+    area.innerHTML = '';
+
+    let done = 0;
+    let errors = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const ext = file.name.split('.').pop();
+      const fileName = `${jobRef}_${String(i + 1).padStart(3, '0')}.${ext}`;
+
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `
+        <span class="file-name">${fileName}</span>
+        <span class="file-status status-uploading" id="status-${i}">Uploading...</span>
+      `;
+      area.appendChild(item);
+
+      try {
+        const base64 = await toBase64(file);
+        const res = await fetch('/.netlify/functions/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fileName: `${jobRef}/${fileName}`, fileData: base64 })
+        });
+
+        if (res.ok) {
+          document.getElementById(`status-${i}`).textContent = '✓ Done';
+          document.getElementById(`status-${i}`).className = 'file-status status-done';
+          done++;
+        } else {
+          throw new Error('Upload failed');
+        }
+      } catch (e) {
+        document.getElementById(`status-${i}`).textContent = '✗ Error';
+        document.getElementById(`status-${i}`).className = 'file-status status-error';
+        errors++;
+      }
+    }
+
+    const summary = document.getElementById('summary');
+    summary.style.display = 'block';
+    summary.innerHTML = errors === 0
+      ? `<strong>${done} photo${done !== 1 ? 's' : ''} uploaded successfully.</strong> You can close this page.`
+      : `<strong>${done} uploaded, ${errors} failed.</strong> Please try again for failed items.`;
+  }
+
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+</script>
+</body>
+</html>
