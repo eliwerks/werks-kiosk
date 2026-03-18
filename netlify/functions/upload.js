@@ -49,19 +49,17 @@ exports.handler = async function(event) {
       res.on('end', () => {
         resolve({
           statusCode: res.statusCode === 200 ? 200 : 500,
-          headers: {
-            'Access-Control-Allow-Origin': '*'
-          },
+          headers: { 'Access-Control-Allow-Origin': '*' },
           body: data
         });
       });
     });
 
     req.on('error', (e) => {
-      resolve({ 
-        statusCode: 500, 
+      resolve({
+        statusCode: 500,
         headers: { 'Access-Control-Allow-Origin': '*' },
-        body: e.message 
+        body: e.message
       });
     });
 
