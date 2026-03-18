@@ -141,4 +141,159 @@
 <!-- Screen 2: Job Number -->
 <div class="screen" id="s2">
   <div class="progress">
-    <div class="dot done"></div><div class="dot active"></div><div class="dot">
+    <div class="dot done"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+  <div class="step-label">Step 2 of 5</div>
+  <h2>Job Number</h2>
+  <input type="text" id="jobNumber" placeholder="e.g. J1042" />
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goTo(1)">Back</button>
+    <button class="btn" onclick="next(2, 'jobNumber', 3)">Next</button>
+  </div>
+</div>
+
+<!-- Screen 3: Client -->
+<div class="screen" id="s3">
+  <div class="progress">
+    <div class="dot done"></div><div class="dot done"></div><div class="dot active"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+  <div class="step-label">Step 3 of 5</div>
+  <h2>Client Name</h2>
+  <input type="text" id="client" placeholder="Client name" />
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goTo(2)">Back</button>
+    <button class="btn" onclick="next(3, 'client', 4)">Next</button>
+  </div>
+</div>
+
+<!-- Screen 4: Date -->
+<div class="screen" id="s4">
+  <div class="progress">
+    <div class="dot done"></div><div class="dot done"></div><div class="dot done"></div><div class="dot active"></div><div class="dot"></div>
+  </div>
+  <div class="step-label">Step 4 of 5</div>
+  <h2>Date</h2>
+  <input type="date" id="jobDate" />
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goTo(3)">Back</button>
+    <button class="btn" onclick="next(4, 'jobDate', 5)">Next</button>
+  </div>
+</div>
+
+<!-- Screen 5: Description -->
+<div class="screen" id="s5">
+  <div class="progress">
+    <div class="dot done"></div><div class="dot done"></div><div class="dot done"></div><div class="dot done"></div><div class="dot active"></div>
+  </div>
+  <div class="step-label">Step 5 of 5</div>
+  <h2>Description</h2>
+  <textarea id="description" placeholder="Brief description of work performed"></textarea>
+  <div class="btn-row">
+    <button class="btn btn-secondary" onclick="goTo(4)">Back</button>
+    <button class="btn" onclick="generateQR()">Generate QR Code</button>
+  </div>
+</div>
+
+<!-- Screen 6: QR Code -->
+<div class="screen" id="s6">
+  <h2>Scan to Upload Photos</h2>
+  <p class="generating" id="generatingMsg">Generating upload link...</p>
+  <div id="qrcode" style="display:none"></div>
+  <div class="job-label" id="jobLabel" style="display:none"></div>
+  <p id="qrInstructions" style="display:none">Photos will be organized by this job reference</p>
+  <button class="btn" id="newJobBtn" style="display:none" onclick="resetForm()">&#8592; Start New Job</button>
+</div>
+
+<script>
+  document.getElementById('jobDate').valueAsDate = new Date();
+
+  const NETLIFY_URL = 'https://sensational-puppy-ba785b.netlify.app';
+
+  function goTo(n) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('s' + n).classList.add('active');
+  }
+
+  function handleNameSelect() {
+    const val = document.getElementById('techName').value;
+    document.getElementById('otherNameWrapper').style.display = val === 'Other' ? 'block' : 'none';
+  }
+
+  function nextName() {
+    const select = document.getElementById('techName').value;
+    const other = document.getElementById('otherName').value.trim();
+    if (!select) { alert('Please select a name.'); return; }
+    if (select === 'Other' && !other) { alert('Please type your name.'); return; }
+    goTo(2);
+  }
+
+  function next(current, fieldId, nextScreen) {
+    const val = document.getElementById(fieldId).value.trim();
+    if (!val) { alert('Please fill in this field before continuing.'); return; }
+    goTo(nextScreen);
+  }
+
+  async function generateQR() {
+    const selectVal = document.getElementById('techName').value;
+    const tech = (selectVal === 'Other'
+      ? document.getElementById('otherName').value.trim()
+      : selectVal).replace(/\s+/g, '_');
+    const job = document.getElementById('jobNumber').value.trim();
+    const client = document.getElementById('client').value.trim().replace(/\s+/g, '_');
+    const date = document.getElementById('jobDate').value;
+    const desc = document.getElementById('description').value.trim().replace(/\s+/g, '_').substring(0, 30);
+
+    const jobRef = `${tech}_${job}_${client}_${date}_${desc}`;
+
+    goTo(6);
+    document.getElementById('generatingMsg').style.display = 'block';
+    document.getElementById('qrcode').style.display = 'none';
+    document.getElementById('jobLabel').style.display = 'none';
+    document.getElementById('qrInstructions').style.display = 'none';
+    document.getElementById('newJobBtn').style.display = 'none';
+
+    try {
+      const res = await fetch(`${NETLIFY_URL}/.netlify/functions/create-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobRef })
+      });
+
+      const data = await res.json();
+      const uploadUrl = data.url;
+
+      document.getElementById('generatingMsg').style.display = 'none';
+      document.getElementById('jobLabel').textContent = jobRef;
+      document.getElementById('jobLabel').style.display = 'block';
+      document.getElementById('qrInstructions').style.display = 'block';
+      document.getElementById('newJobBtn').style.display = 'block';
+
+      document.getElementById('qrcode').innerHTML = '';
+      document.getElementById('qrcode').style.display = 'block';
+      new QRCode(document.getElementById('qrcode'), {
+        text: uploadUrl,
+        width: 260,
+        height: 260,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+      });
+
+    } catch(e) {
+      document.getElementById('generatingMsg').textContent = 'Error generating QR code. Please try again.';
+    }
+  }
+
+  function resetForm() {
+    document.getElementById('techName').value = '';
+    document.getElementById('otherName').value = '';
+    document.getElementById('otherNameWrapper').style.display = 'none';
+    document.getElementById('jobNumber').value = '';
+    document.getElementById('client').value = '';
+    document.getElementById('jobDate').valueAsDate = new Date();
+    document.getElementById('description').value = '';
+    document.getElementById('qrcode').innerHTML = '';
+    goTo(0);
+  }
+</script>
+</body>
+</html>
